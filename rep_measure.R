@@ -26,8 +26,10 @@ rep_measure <- function(X, C, delta0, alpha = 0.05, plot = T ){
    
    Md <- C %*% X_bar
    Sd <- C %*% S %*% t(C)
+   if(det(Sd)<1e-4){stop("matrice Sd non invertibile")}
+   inv.Sd <- solve(Sd)
    # test statistic
-   T2 <- n * t(Md - delta0) %*% Sd %*% (Md - delta0)
+   T2 <- n * t(Md - delta0) %*% inv.Sd %*% (Md - delta0)
    # test p-value
    p.value <- 1 - pf(T2 * (n - q + 1) / ((n - 1) * (q - 1)),
                      q - 1,

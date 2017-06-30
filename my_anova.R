@@ -179,7 +179,6 @@ twoway_anova <- function(X,
    # 1) normalità dentro ciascun quadrato
    # 2) uguaglianza delle g matrici di covarianza
    Ps <- NULL
-   Pcov <- NULL
    enough.data <- T
    for(i in 1:length(levels(F1))){
       for(j in 1:length(levels(F2))){
@@ -209,12 +208,12 @@ twoway_anova <- function(X,
    # sono felice di accettare, come nel caso di gaussianità, l'ipotesi nulle è 
    # invertita rispetto al caso delle scoperte
    if(enough.data){
-      for(i in 1:length(levels(F1))){
-         p.b <- bartlett.test(Y[F1 == levels(F1)[i]],F2[F1 == levels(F1)[i]])
-         Pcov <- c(Pcov,p.b$p.value)
-      }
+      w <- bartlett.test(Y,F1:F2)
+      p.bartlet <- w$p.value
+      print("############# BARTLETT TEST ##################")
+      print(w)
    }
-   if(any(Pcov < alpha)){
+   if(p.bartlet < alpha){
       warning("non posso assumere sigma uguali")
    }
    
@@ -316,7 +315,7 @@ twoway_anova <- function(X,
    
    return(list(IC.F1 = IC.F1,
                IC.F2 = IC.F2,
-               p.bartlet = Pcov,
+               p.bartlet = p.bartlet,
                p.gauss = Ps,
                fit = fit,
                M.hat = M.hat))

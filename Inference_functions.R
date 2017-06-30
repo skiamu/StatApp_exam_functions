@@ -67,7 +67,7 @@ ConfidenceRegion <- function(X = NULL,
              },
              T2 = {# case "simulatneous confidence interval"
                 # IC is a matrix dim(A)[1]x2, each row is a CI (function defined below)
-                IC <- simult_CI(X_bar, S, alpha = alpha, A, n, plot = plot)
+                IC <- simult_CI(X_bar, S, alpha = alpha, A, n, print.plot = print.plot)
                 # print the results
                 print("################# T2 CONFIDENCE INTERVALS ###############")
                 cat("Simultaneus confidence interval @ level alpha = ",alpha,"\n")
@@ -77,9 +77,9 @@ ConfidenceRegion <- function(X = NULL,
              Bonf = {# case "Bonferroni confidence interval"
                 
                 # IC is a matrix dim(A)[1]x2, each row is a CI
-                IC <- simult_CI(X_bar, S, alpha = alpha, A, n, Bonf = T, plot = plot)
+                IC <- simult_CI(X_bar, S, alpha = alpha, A, n, Bonf = T, print.plot = print.plot)
                 # print the results
-                print("--------------------")
+                print("################# BONFERRONI CONFIDENCE INTERVALS ###############")
                 cat("Bonferroni confidence interval @ level alpha = ",alpha,"\n")
                 print(IC)
                 return(IC)
@@ -117,7 +117,7 @@ ConfidenceRegion <- function(X = NULL,
 } # end function mean_inference
 
 # compute simultaneous confidence interval for linear combnations of mu
-simult_CI <- function(X_bar, S, alpha = 0.05, A, n, Bonf = FALSE,plot = FALSE){
+simult_CI <- function(X_bar, S, alpha = 0.05, A, n, Bonf = FALSE,print.plot = FALSE){
    # INPUT:
    #       X_bar = sample mean
    #       S = sample covariance
@@ -144,7 +144,7 @@ simult_CI <- function(X_bar, S, alpha = 0.05, A, n, Bonf = FALSE,plot = FALSE){
                   sup = t(a)%*% X_bar + sqrt(t(a)%*%S%*%a / n) * csi)
    }
    # plot the intervals
-   if(plot)  plot_intervals(IC, k)
+   if(print.plot){plot_intervals(IC, k)}  
    return(IC)
    
 }# end simult_CI
