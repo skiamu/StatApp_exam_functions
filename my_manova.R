@@ -125,7 +125,8 @@ oneway_manova <- function(Y,
    print(CI)
    
    return(list(CI = CI,
-               summary.manova = z))
+               summary.manova = z,
+               p.gauss = Ps))
    
 } # end function
 
@@ -157,12 +158,23 @@ twoway_manova <- function(Y,X,alpha = 0.05,print.result = T,with.interaction = F
    if(length(F1) %% g*b == 0){
       n <- length(F1) %% g*b
    }else{
-      stop("unbalanced design")
+      warning("unbalanced design")
    }
    # livelli fattore 1
    treat_lev1 <- levels(F1)
    # livelli fattore 2
    treat_lev2 <- levels(F2)
+   ################# check assumption gaussianity ###################
+   P.gauss <- vector("double",g*b)
+   count <- 0
+   for(i in 1:g){
+      for(j in 1:b){
+         count <- count + 1
+         idx <- which(F1 == treat_lev1[i] & F2 == treat_lev2[j])
+         P.gauss[count] <- mcshapiro.test(Y[idx,])$p
+      }
+   }
+   
    if(with.interaction && n != 1){
       fit <- manova(as.matrix(Y) ~ F1 + F2 + F1:F2)
       z <- summary.manova(fit, test="Wilks")
@@ -237,11 +249,9 @@ twoway_manova <- function(Y,X,alpha = 0.05,print.result = T,with.interaction = F
    
    
    return(list(IC = IC,
-               fit = fit))
+               fit = fit,
+               P.gauss = P.gauss))
    
-   
-   
-   
-   
+
    
 }

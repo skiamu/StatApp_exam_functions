@@ -73,8 +73,8 @@ PC <- function(X,
       # Explained variance with barplots
       x11()
       layout(matrix(c(2,3,1,3),2,byrow=T))
-      plot(princomp(X2), las=2, main='Principal components', ylim=c(0,ifelse(scaled,6,range(X))))
-      barplot(sapply(data.frame(X2),sd)^2, las=2, main='Original Variables', ylim=c(0,ifelse(scaled,6,range(X))), ylab='Variances')
+      plot(princomp(X2), las=2, main='Principal components', ylim=c(0,ifelse(scaled,6,max(princomp(X2)$sdev^2))))
+      barplot(sapply(data.frame(X2),sd)^2, las=2, main='Original Variables', ylim=c(0,ifelse(scaled,6,max(princomp(X2)$sdev^2))), ylab='Variances')
       plot(cumsum(sdev^2)/sum(sdev^2), type='b', axes=F, xlab='number of components', 
            ylab='contribution to the total variance', ylim=c(0,1))
       abline(h=1, col='blue')

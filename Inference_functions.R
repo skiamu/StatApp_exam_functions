@@ -61,7 +61,7 @@ ConfidenceRegion <- function(X = NULL,
                 plot_ellipse(X_bar, S, alpha = alpha, sample = T, n = n)
                 # add the projection of the ellipse along the axis: in other
                 # words compute the F simultaneous intervals and plot them
-                IC <- simult_CI(X_bar, S, alpha = alpha, A, n, plot = F)
+                IC <- simult_CI(X_bar, S, alpha = alpha, A, n, print.plot = print.plot)
                 segments(IC[1,1],0,IC[1,2],0,lty=1,lwd=2,col='red')
                 segments(0,IC[2,1],0,IC[2,2],lty=1,lwd=2,col='red')
              },

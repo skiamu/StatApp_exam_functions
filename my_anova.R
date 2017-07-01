@@ -121,7 +121,8 @@ oneway_anova <- function(X,plot.result = T, alpha = 0.05, print.result = T,var.i
    return(list( IC = IC,
                 fit = fit, 
                 assunzioni = list(gauss = Ps,var = cov.test),
-                M.hat = M.hat))
+                M.hat = M.hat,
+                tau = tau))
    
 } # end function
 
@@ -241,6 +242,8 @@ twoway_anova <- function(X,
    
    
    # INTERVALLI DI CONFIDENZA SULLE DIFFERENZE DI MEDIE
+   # gli intervalli sono costruiti sul modello dato in input in formula, fa 
+   # differenza perchè cambiano i gradi di liberà nella stima della sigma
    fit <- aov(formula,data = X)
    treat_lev1 <- levels(F1)
    treat_lev2 <- levels(F2)
@@ -318,7 +321,8 @@ twoway_anova <- function(X,
                p.bartlet = p.bartlet,
                p.gauss = Ps,
                fit = fit,
-               M.hat = M.hat))
+               M.hat = M.hat,
+               param = list(tau = tau,beta = beta)))
    
    
    

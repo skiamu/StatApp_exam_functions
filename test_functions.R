@@ -77,7 +77,7 @@ T2.test <- function( X = NULL,
       # of the mean vector mu, if we've rejected H0 we want to see if
       # the sample mean of some components don't belong to its confidence 
       # interval
-      IC <- ConfidenceRegion(X,large_n = F,alpha = alpha,to.do = intervals,plot = F)
+      IC <- ConfidenceRegion(X,large_n = F,alpha = alpha,to.do = intervals,print.plot = F)
       
    }
    # se C in input non è nulla sgnifica che voglio fare test simultaneo su

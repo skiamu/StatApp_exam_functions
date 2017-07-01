@@ -68,7 +68,7 @@ classifier <- function(X,
    if(!is.null(mis.cost)){
       prior <- prior * mis.cost / sum(mis.cost * prior)
       stopifnot(sum(prior) == 1)
-      print("####################################################")
+      print("#################### AVVISO MODIFICHE PRIOR #####################")
       cat("nel calcolo delle prior modificate sto moltiplicando la prior del
           gruppo ",levels(group)[1], " con il costo ", mis.cost[1],"\n")
    }
@@ -77,12 +77,12 @@ classifier <- function(X,
    }else{
       fit <- qda(group ~ .,data = X, prior = as.numeric(prior))
    }
-   
+   print(fit)
    
    pred <- predict(fit)
    ######### PERFORMANCE DEL CLASSIFICATORE
    misc <- table(classe.vera=group, classe.allocata=pred$class)
-   print("####################################################")
+   print("################# CLASSIFIER PERFORMANCES ###########################")
    print(misc)
    if(prior.sample){
       errori <- pred$class != group
@@ -104,24 +104,26 @@ classifier <- function(X,
    ######### PREDICTION NEW OBSERVATION
    if(!is.null(X0.new)){
       new.pred <- predict(fit, X0.new)
-      print("########################################")
+      print("################### PREDICTION #####################")
       print(new.pred)
    }
    if(print.plot && p == 2){
       # extract the first two canonical component because we want to plot on a plane
       cc1 <- X[,1]
       cc2 <- X[,2]
+      # ricordarsi che le medie sono nelle colonne
       cc.M <- Mg
       color.group <- group
       levels(color.group) <- rainbow(g)
       
       x11()
+      # plotto le caratteristiche nel piani
       plot(cc1, cc2, main= kind, xlab=colnames(X)[1],
            ylab=colnames(X)[2], pch=20, col=as.character(color.group))
       legend(min(cc1), min(cc2)+2, legend = levels(group), fill= rainbow(g), cex=.7)
       
       for(i in 1:g){
-         points(cc.M[i,1], cc.M[i,2], pch=4, col = rainbow(g)[i] , lwd=2, cex=1.5)
+         points(cc.M[1,i], cc.M[2,i], pch=4, col = rainbow(g)[i] , lwd=2, cex=1.5)
       }
       x.cc  <- seq(min(cc1),max(cc1),len=200)
       y.cc  <- seq(min(cc2),max(cc2),len=200)
