@@ -17,11 +17,16 @@
 #                 capire quale livello/i è/sono quelli determinanti
 # 
 # 
-oneway_anova <- function(X,plot.result = T, alpha = 0.05, print.result = T,var.int = F){
+oneway_anova <- function(X,
+                         plot.result = T,
+                         alpha = 0.05,
+                         print.result = T,
+                         var.int = F,
+                         int.diff=T,
+                         int.mean=F){
    
    # estraggo dal dataframe vettore delle risposte e dei trattamenti
    Y <- X[,1]; treat <- X[,2]
-   
    
    # This is a case of one-way ANOVA: one variable (Y) observed 
    # over g levels
@@ -83,34 +88,69 @@ oneway_anova <- function(X,plot.result = T, alpha = 0.05, print.result = T,var.i
    SSres <- sum(residuals(fit)^2)
    # stima della varianza sigma^2
    S <- SSres/(n-g)
-   
-   IC <- data.frame(nrow = g*(g-1)/2,ncol = 2)
-   nomi <- vector("character",g*(g-1)/2)
-   count <- 0
-   for(i in 1:(g-1)) {
-      for(j in (i+1):g) {
-         count <- count + 1
-         nomi[count] <- paste(treat_lev[i],"-",treat_lev[j])
-         IC[count,] <-
-            c(Mediag[i]-Mediag[j] - qt(1-alpha/(2*k), n-g) * 
-                 sqrt( S * ( 1/ng[i] + 1/ng[j] )),
-              Mediag[i]-Mediag[j] + qt(1-alpha/(2*k), n-g) * 
-                 sqrt( S * ( 1/ng[i] + 1/ng[j] )))
+   # intervalli di confidenza con la correzione di bonferroni per le differenze 
+   # delle medie della risposta dentro ogni gruppo, voglio vedere quale intervallo
+   # non contiene 0 in modo da dedurre che c'è una differenza significative nella
+   # media tra due gruppi
+   if(int.diff){
+      IC <- data.frame(nrow = g*(g-1)/2,ncol = 2)
+      nomi <- vector("character",g*(g-1)/2)
+      count <- 0
+      for(i in 1:(g-1)) {
+         for(j in (i+1):g) {
+            count <- count + 1
+            nomi[count] <- paste(treat_lev[i],"-",treat_lev[j])
+            IC[count,] <-
+               c(Mediag[i]-Mediag[j] - qt(1-alpha/(2*k), n-g) * 
+                    sqrt( S * ( 1/ng[i] + 1/ng[j] )),
+                 Mediag[i]-Mediag[j] + qt(1-alpha/(2*k), n-g) * 
+                    sqrt( S * ( 1/ng[i] + 1/ng[j] )))
+         }
+      }
+      rownames(IC) <- nomi
+      colnames(IC) <- c("LB","UB")
+      if(var.int){
+         IC.var <- c(LB = (n-g) * S / qchisq(1-alpha/(2*k),n-g),
+                     UB = (n-g) * S / qchisq(alpha/(2*k),n-g))
       }
    }
-   rownames(IC) <- nomi
-   colnames(IC) <- c("LB","UB")
-   if(var.int){
-      IC.var <- c(LB = (n-g) * S / qchisq(1-alpha/(2*k),n-g),
-                  UB = (n-g) * S / qchisq(alpha/(2*k),n-g))
+   # intervalli di confidenza con la correzioni di bonferroni per la media della
+   # risposta tra i gruppi del fattote treat. k può essere pari al numero di livelli
+   # del gruppo oppure aumentato di uno se voglio fare anke un intervalli
+   # per la varianza che per hp è uguale nei gruppi (vedere bartlett test)
+   if(int.mean){
+      kmean <- ifelse(var.int, g + 1, g)
+      ICmean <- data.frame(nrow = g,ncol = 2)
+      nomiMean <- vector("character",g)
+      for(i in 1:g) {
+         nomiMean[i] <- paste(treat_lev[i])
+         ICmean[i,] <-
+            c(Mediag[i] - qt(1-alpha/(2*kmean), n-g) * 
+                 sqrt( S * (1/ng[i])),
+              Mediag[i] + qt(1-alpha/(2*kmean), n-g) * 
+                 sqrt( S * (1/ng[i])))
+      }
+      rownames(ICmean) <- nomiMean
+      colnames(ICmean) <- c("LB","UB")
+      if(var.int){
+         ICmean.var <- c(LB = (n-g) * S / qchisq(1-alpha/(2*kmean),n-g),
+                         UB = (n-g) * S / qchisq(alpha/(2*kmean),n-g))
+      }
    }
    
    # stampo gli intervalli di confidenza per ogni differenza delle medie
-   print("############## IC DIFFERENZE MEDIE (tau_i - tau_j) #################")
-   cat("correzione di Bonferroni k = ", k, "\n")
-   print(IC)
-   if(var.int){cat("IC per la varianza : ", IC.var, "\n")}
-   
+   if(int.diff){
+      print("############## IC DIFFERENZE MEDIE (tau_i - tau_j) #################")
+      cat("correzione di Bonferroni k = ", k, "\n")
+      print(IC)
+      if(var.int){cat("IC per la varianza : ", IC.var, "\n")}
+   }
+   if(int.mean){
+      print("############## IC  MEDIE  #################")
+      cat("correzione di Bonferroni k = ", kmean, "\n")
+      print(ICmean)
+      if(var.int){cat("IC per la varianza : ", ICmean.var, "\n")}
+   }
    
    # STIMA MEDIE CON IL MODELLO ANOVA
    tau <- Mediag - Media
@@ -118,7 +158,8 @@ oneway_anova <- function(X,plot.result = T, alpha = 0.05, print.result = T,var.i
    
    
    
-   return(list( IC = IC,
+   return(list( IC = myifelse(int.diff,IC,"no intervallo differenze"),
+                ICmean = myifelse(int.mean,ICmean,"no intervalli medie nei gruppi"),
                 fit = fit, 
                 assunzioni = list(gauss = Ps,var = cov.test),
                 M.hat = M.hat,
@@ -136,7 +177,8 @@ oneway_anova <- function(X,plot.result = T, alpha = 0.05, print.result = T,var.i
 #       plot.result = TRUE se si vogliono plot
 #       print.result = TRUE se si voglioni i risultati numerici
 #       formula = formula per fittare il modello di ANOVA
-#             
+#       int.diff = T se si vogliono IC sulle differenze delle medie nei fattori
+#       int.mean = T se si vogliono IC sulle medie nelle combinazioni di fattori        
 # OUTPUT:
 #       IC:F1 = dataframe con gli intervalli di confidenza simultanei delle 
 #               differenze di medie nel primo fattore
@@ -156,6 +198,8 @@ twoway_anova <- function(X,
                          alpha = 0.05, 
                          print.result = T,
                          formula = NULL,
+                         int.diff = T,
+                         int.mean = F,
                          var.int = F){
    # vettore delle risposte
    Y <- X[,1]
@@ -225,7 +269,10 @@ twoway_anova <- function(X,
    fit <- aov(Y ~ F1 + F2 + F1:F2, data = X)
    print("################## AOV SUMMARY ##############################")
    print(summary(fit))
-   # faccio un test simultaneo sui due fattori
+   # faccio un test simultaneo sui due fattori per vedere se sono significativi
+   # per la risposta media. Se chiede un test sulla significatività dell'interazione
+   # guardare direttamente il summery della ANOVA col modello completo e li
+   # si ha tutta l'informazione necessaria (valore statistica, p.value ecc)
    M <- mean(Y) # media intero campione
    Mg <- tapply(Y, F1, mean) # media dentro fattore 1
    Mb <- tapply(Y, F2, mean) # media dentro fattore 2
@@ -243,61 +290,111 @@ twoway_anova <- function(X,
    
    # INTERVALLI DI CONFIDENZA SULLE DIFFERENZE DI MEDIE
    # gli intervalli sono costruiti sul modello dato in input in formula, fa 
-   # differenza perchè cambiano i gradi di liberà nella stima della sigma
+   # differenza perchè cambiano i gradi di liberà nella stima della sigma.
+   # Ad esempio se voglio usare il modello completo dò in formula in input il modello
+   # completo, se voglio quello additivo non metto in formula l'interazione. Se
+   # voglio usare un solo fattore allora devo passare a one_way
    fit <- aov(formula,data = X)
    treat_lev1 <- levels(F1)
    treat_lev2 <- levels(F2)
+   # devo ricalcolare la S perche ho cambiato modello quindi sono cambianti i
+   # gradi di libertà
+   SSres   <- sum((fit$residuals)^2) # or from the summary: 16.37
+   S <- SSres/fit$df.residual
    # gradi di libertà che saranno usati nel quantile delle t
    dof.res <- fit$df.residual
-   # la correzione di Bonf è pari al numero di differenze che si possono fare.
-   # Nel caso specifichi in input anke l'intervallo per la varianza si aggiunge 1
-   k <- ifelse(var.int, g*(g-1)/2 + b*(b-1)/2 + 1, g*(g-1)/2 + b*(b-1)/2)
-   IC.F1 <- data.frame(nrow = g*(g-1)/2,ncol = 2)
-   IC.F2 <- data.frame(nrow = b*(b-1)/2, ncol = 2)
-   nomi.g <- vector("character",g*(g-1)/2)
-   nomi.b <- vector("character",b*(b-1)/2)
-   count <- 0
    
-   for(i in 1:(g-1)) {
-      for(j in (i+1):g) {
-         count <- count + 1
-         nomi.g[count] <- paste(treat_lev1[i],"-",treat_lev1[j])
-         IC.F1[count,] <-
-            c(Mg[i]-Mg[j] - qt(1-alpha/(2*k), dof.res) * 
-                 sqrt( S * ( 1/ng[i] + 1/ng[j] )),
-              Mg[i]-Mg[j] + qt(1-alpha/(2*k), dof.res) * 
-                 sqrt( S * ( 1/ng[i] + 1/ng[j] )))
+   if(int.diff){
+      # la correzione di Bonf è pari al numero di differenze che si possono fare.
+      # Nel caso specifichi in input anke l'intervallo per la varianza si aggiunge 1
+      k <- ifelse(var.int, g*(g-1)/2 + b*(b-1)/2 + 1, g*(g-1)/2 + b*(b-1)/2)
+      IC.F1 <- data.frame(nrow = g*(g-1)/2,ncol = 2)
+      IC.F2 <- data.frame(nrow = b*(b-1)/2, ncol = 2)
+      nomi.g <- vector("character",g*(g-1)/2)
+      nomi.b <- vector("character",b*(b-1)/2)
+      count <- 0
+      
+      for(i in 1:(g-1)) {
+         for(j in (i+1):g) {
+            count <- count + 1
+            nomi.g[count] <- paste(treat_lev1[i],"-",treat_lev1[j])
+            IC.F1[count,] <-
+               c(Mg[i]-Mg[j] - qt(1-alpha/(2*k), dof.res) * 
+                    sqrt( S * ( 1/ng[i] + 1/ng[j] )),
+                 Mg[i]-Mg[j] + qt(1-alpha/(2*k), dof.res) * 
+                    sqrt( S * ( 1/ng[i] + 1/ng[j] )))
+         }
       }
-   }
-   rownames(IC.F1) <- nomi.g
-   colnames(IC.F1) <- c("LB","UB")
-   count <- 0
-   for(i in 1:(b-1)) {
-      for(j in (i+1):b) {
-         count <- count + 1
-         nomi.b[count] <- paste(treat_lev2[i],"-",treat_lev2[j])
-         IC.F2[count,] <-
-            c(Mb[i]-Mb[j] - qt(1-alpha/(2*k), dof.res) * 
-                 sqrt( S * ( 1/nb[i] + 1/nb[j] )),
-              Mb[i]-Mb[j] + qt(1-alpha/(2*k), dof.res) * 
-                 sqrt( S * ( 1/nb[i] + 1/nb[j] )))
+      rownames(IC.F1) <- nomi.g
+      colnames(IC.F1) <- c("LB","UB")
+      count <- 0
+      for(i in 1:(b-1)) {
+         for(j in (i+1):b) {
+            count <- count + 1
+            nomi.b[count] <- paste(treat_lev2[i],"-",treat_lev2[j])
+            IC.F2[count,] <-
+               c(Mb[i]-Mb[j] - qt(1-alpha/(2*k), dof.res) * 
+                    sqrt( S * ( 1/nb[i] + 1/nb[j] )),
+                 Mb[i]-Mb[j] + qt(1-alpha/(2*k), dof.res) * 
+                    sqrt( S * ( 1/nb[i] + 1/nb[j] )))
+         }
       }
+      rownames(IC.F2) <- nomi.b
+      colnames(IC.F2) <- c("LB","UB")
+      
+      if(var.int){
+         IC.var <- c(LB = dof.res * S / qchisq(1-alpha/(2*k),dof.res),
+                     UB = dof.res * S / qchisq(alpha/(2*k),dof.res))
+      }
+      print("################### IC DIFFERENZE MEDIE #############################")
+      print("si è usato il seguente modello per la costruzione degli intervalli:")
+      print(summary(fit))
+      cat("la correzione di Bonferroni usata è k = ", k,"\n")
+      print(IC.F1)
+      print(IC.F2)
+      if(var.int){cat("IC per la varianza : ", IC.var, "\n")}
    }
-   rownames(IC.F2) <- nomi.b
-   colnames(IC.F2) <- c("LB","UB")
-   
-   if(var.int){
-      IC.var <- c(LB = dof.res * S / qchisq(1-alpha/(2*k),dof.res),
-                  UB = dof.res * S / qchisq(alpha/(2*k),dof.res))
+   # faccio intervalli di confidenza per la media nelle combinazioni dei gruppi
+   # dei due fattori
+   if(int.mean){
+      # se voglio tenere sotto controllo col fwer anke l'intervallo della varianza
+      # (1 per hp) allora aggiungo 1 alla correzione k di bonferroni
+      k <- ifelse(var.int, b*g+1, b*g)
+      IC.mean <- data.frame(matrix(nrow = g*b, ncol = 3))
+      nomi <- vector("character",g*b)
+      count <- 0
+      for(i in 1:g){
+         for(j in 1:b){
+            count <- count + 1
+            nomi[count] <- paste(treat_lev1[i],"/",treat_lev2[j])
+            idx <- which(F1 == treat_lev1[i] & F2 == treat_lev2[j])
+            # cardinalità nel gruppo i/j
+            n.mean <- length(idx)
+            # media nel gruppo i/j
+            M <- mean(Y[idx])
+            # quantile della t corretto con bonferroni e con i gradi di libertà dati
+            # dai resudui del modello in input (non necessariamnete il completo)
+            qT <- qt(1-alpha/(2*k),dof.res)
+            IC.mean[count,] <- c(LB = M - qT * sqrt(S/n.mean),
+                                 M = M,
+                                 UB = M + qT * sqrt(S/n.mean))
+            
+         }
+      }
+      rownames(IC.mean) <- nomi
+      colnames(IC.mean) <- c("LB","mean","UB")
+      if(var.int){
+         IC.var <- c(LB = dof.res * S / qchisq(1-alpha/(2*k),dof.res),
+                     UB = dof.res * S / qchisq(alpha/(2*k),dof.res))
+      }
+      print("################### IC  MEDIE #############################")
+      print("si è usato il seguente modello per la costruzione degli intervalli:")
+      print(summary(fit))
+      cat("la correzione di Bonferroni usata è k = ", k,"\n")
+      print(IC.mean)
+      if(var.int){cat("IC per la varianza : ", IC.var, "\n")}
+      
    }
-   print("################### IC DIFFERENZE MEDIE #############################")
-   print(summary(fit))
-   cat("la correzione di Bonferroni usata è k = ", k,"\n")
-   print(IC.F1)
-   print(IC.F2)
-   if(var.int){cat("IC per la varianza : ", IC.var, "\n")}
-   
-   
    # STIMA MEDIE CON IL MODELLO TWO-WAY ANOVA
    # grand mean
    X.grand <- mean(Y)
@@ -314,10 +411,9 @@ twoway_anova <- function(X,
       }
    }
    
-   
-   
-   return(list(IC.F1 = IC.F1,
-               IC.F2 = IC.F2,
+
+   return(list(IC.diff = myifelse(int.diff,list(IC.F1 = IC.F1,IC.F2 = IC.F2),"no IC per differenze"),
+               IC.mean = myifelse(int.mean,IC.mean,"no IC per medie nei gruppi"),
                p.bartlet = p.bartlet,
                p.gauss = Ps,
                fit = fit,

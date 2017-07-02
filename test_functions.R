@@ -56,8 +56,6 @@ T2.test <- function( X = NULL,
       cat("quantile distribuzione (con eventauale coefficiente moltiplicativo) = ",cfr.qnt,"\n")
       # plot the rejection region if X is bidimensional
       if(p==2){
-         # load file with function "plot_ellipse"
-         source("/home/andrea/StatApp/StatApp_test/inference/plot_ellipse.R")
          # plot rejection region and give information about the ellipse
          plot_ellipse(mu0, S, alpha = alpha, sample = T, n = n,
                       large_n = ifelse(large_n,T,F),

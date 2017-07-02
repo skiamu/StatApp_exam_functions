@@ -60,12 +60,9 @@ plot_ellipse <- function (mu,
    max.semiax <- sqrt(lambda1) * r
    min.semiax <- sqrt(lambda2) * r 
    if(print.result){
-      print("--------------------")
+      print("################# CARATTERISTICHE ELLISSE ####################")
       cat("(lambda1, lambda2) = ",c(lambda1,lambda2),"\n",sep = "  ")
-      print("--------------------")
-      print("autovettori = ")
-      print(w$vectors)
-      print("--------------------")
+      cat("autovettori : ",w$vectors,"\n")
       cat("semiasse maggiore = ", max.semiax,"\n")
       cat("semiasse minore = ",min.semiax,"\n")
       cat("raggio = ",r,"\n")

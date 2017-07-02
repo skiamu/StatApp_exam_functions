@@ -8,13 +8,19 @@
 #       Y = dataframe della risposta, la risposta è vettoriale 
 #       treat = fattore 1, stessa lunghezza di Y con livelli
 #               per ogni osservazione
-# 
+#       int.diff = T se si vogliono gli intervalli di confidenza per le differenze
+#                  delle medie nei gruppi del fattore 1
+#      int.mean = T se si vuole gli intervalli di confidenza per le medie
+#                 nei gruppi
+#                 
 # NOTE : manca da fare il check sull'ugluaglianza delle covarianze
 # e mettere a posto l'ultimo plot
 #
 oneway_manova <- function(Y,
                           treat,
-                          plot.result = T,
+                          int.diff = T,
+                          int.mean = T,
+                          plot.result = F,
                           alpha = 0.05,
                           print.result = T){
    
@@ -63,8 +69,6 @@ oneway_manova <- function(Y,
    }
    
    ########## CHECK ASSUMPTIONS ################
-   load("/home/andrea/StatApp/StatApp_test/inference/mcshapiro.test.RData")
-   library(ggplot2)
    # controlla la normalità p-dimensionale della risposta
    Ps <- NULL
    for(i in 1:g){
@@ -98,33 +102,62 @@ oneway_manova <- function(Y,
    # per le differenze tre medie per ogni compenente del vettore 
    # delle risposta
    
-   # numero di differenze tra medie (g-1) * g / 2 per ogni componente
-   k <- p*g*(g-1)/2
-   # quantile della t student per Bonferroni CI
-   qT <- qt(1-alpha/(2*k), n-g)
    # stima della matrice covarianza
    W <- summary.manova(fit)$SS$Residuals
    # grand mean
    M <- sapply(Y,mean)
-   # matrice delle medie nei gruppi
+   # matrice delle medie nei gruppi, la media è un vettore riga
    Mg <- matrix(nrow = g, ncol = p)
    for(i in 1:g){
       Mg[i,] <- sapply(Y[which(treat == levels(treat)[i]),], mean)
    }
    treat_lev <- levels(treat)
-   CI <- list()
-   for(i in 1:(g-1)){
-      for(j in (i+1):g){
-         inf <- Mg[i,]-Mg[j,] - qT * sqrt( diag(W)/(n-g) * (1/ng[i]+1/ng[j]) )
-         sup <- Mg[i,]-Mg[j,] + qT * sqrt( diag(W)/(n-g) * (1/ng[i]+1/ng[j]) )
-         CI[[paste0(treat_lev[i],"-",treat_lev[j])]] <- cbind(inf,sup)
-      }
-   }
-   print("######## CI DIFFERENZE MEDIE NEI GRUPPI PER COMPONENTI ############")
-   cat("la correzione di Bonferroni usata è k = ", k, "\n")
-   print(CI)
    
-   return(list(CI = CI,
+   if(int.diff){
+      # numero di differenze tra medie (g-1) * g / 2 per ogni componente
+      k <- p*g*(g-1)/2
+      # quantile della t student per Bonferroni CI
+      qT <- qt(1-alpha/(2*k), n-g)
+      # CI è una lista che contiene in ogni entrata ha gli intervalli per le
+      # differenze tra gruppi, per ogni componente del vettore delle risposte.
+      # Quindi è lungo quanto le varie differenze che si possono formare
+      CI <- vector("list",g*(g-1)/2)
+      nomi.diff <- vector("character",g*(g-1)/2)
+      count <- 0
+      for(i in 1:(g-1)){
+         for(j in (i+1):g){
+            count <- count + 1
+            nomi.diff[count] <- paste0(treat_lev[i],"-",treat_lev[j])
+            inf <- Mg[i,]-Mg[j,] - qT * sqrt( diag(W)/(n-g) * (1/ng[i]+1/ng[j]) )
+            sup <- Mg[i,]-Mg[j,] + qT * sqrt( diag(W)/(n-g) * (1/ng[i]+1/ng[j]) )
+            CI[[count]] <- cbind(inf,sup)
+         }
+      }
+      names(CI) <- nomi.diff
+      print("######## CI DIFFERENZE MEDIE NEI GRUPPI PER COMPONENTI ############")
+      cat("la correzione di Bonferroni usata è k = ", k, "\n")
+      cat("alpha = ",alpha, "\n")
+      print(CI)
+   }
+   if(int.mean){
+      k <- p * g
+      qT <- qt(1-alpha/(2*k),n-g)
+      CI.mean <- vector("list",g)
+      for(i in 1 :g){
+         inf <- Mg[i,] - qT * sqrt(diag(W)/(n-g)* (1/ng[i]))
+         sup <- Mg[i,] + qT * sqrt(diag(W)/(n-g)* (1/ng[i]))
+         CI.mean[[i]] <- cbind(inf,sup)
+      }
+      names(CI.mean) <- treat_lev
+      print("######## CI  MEDIE NEI GRUPPI PER COMPONENTI ############")
+      cat("la correzione di Bonferroni usata è k = ", k, "\n")
+      cat("alpha = ", alpha, "\n")
+      print(CI.mean)
+      
+   }
+   
+   return(list(CI = myifelse(int.diff,CI,"no intervalli differenze"),
+               CI.mean = myifelse(int.mean,CI.mean,"no intervalli medie"),
                summary.manova = z,
                p.gauss = Ps))
    
@@ -252,6 +285,6 @@ twoway_manova <- function(Y,X,alpha = 0.05,print.result = T,with.interaction = F
                fit = fit,
                P.gauss = P.gauss))
    
-
+   
    
 }
