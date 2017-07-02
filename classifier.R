@@ -25,6 +25,7 @@ classifier <- function(X,
    n <- dim(X)[1]
    # dimensione delle caratteristiche
    p <- dim(X)[2]
+   if(p < 2){stop("p = 1, usare altro")}
    # numerosità campionaria per ogni gruppo
    ng <- table(group)
    # numero di gruppi
@@ -43,7 +44,7 @@ classifier <- function(X,
    for(i in 1:g){
       # indice elementi del gruppi i
       idx <- which(group == levels(group)[i])
-      p.gauss[i] <- mcshapiro.test(X[idx,])$pvalue
+      p.gauss[i] <- shapiro.test(X[idx,])$p.value
    }
    if(p == 1 && kind == "LDA"){
       bar.test <- bartlett.test(X[,1],group)

@@ -7,6 +7,8 @@
 #        X2 = dataframe popolazione 2
 #        print.plot = TRUE se si vogliono i plot
 #        delta0 = ipotesi nulle del test
+#        A = matrice con le righe le combinazioni linear su cui si vuole
+#            calcolare l'intervallo di coonfidenza per la differenza delle medie
 # 
 # 
 # OUTPUT:
@@ -16,7 +18,7 @@
 # 
 # NOTE:
 # 
-two.pop_test <- function(X1, X2, delta0, alpha = 0.05, print.plot = T){
+two.pop_test <- function(X1, X2, delta0, alpha = 0.05, print.plot = T, A = NULL){
    
    # numerosità popolazione 1
    n1 <- dim(X1)[1]
@@ -27,16 +29,25 @@ two.pop_test <- function(X1, X2, delta0, alpha = 0.05, print.plot = T){
    # dimensione popolazione 2
    p2 <- dim(X2)[2]
    if(p1 != p2){
-      stop("population dimension don't agree")
+      stop("population dimensions don't agree")
    }
    p <- p1
+   # se le due popolazioni sono univariate allora faccio semplicemnte un t-test
+   # per il confronto delle medie delle due popolazioni assumendo uguale varianza
+   if(p == 1){
+      p.gauss <- c(shapiro.test(X1[,1])$p.value,shapiro.test(X2[,1])$p.value)
+      z <- t.test(x = X1, y = X2, var.equal = T,conf.level = 1-alpha)
+      print("###### TEST UNIVARIATO UGUAGLIANZA MEDIE POP NORM INDIP ###########")
+      print(z)
+      return(list(test = z, p.gauss = p.gauss))
+   }
    # calcolo la media campionaria per i due campioni
    M1 <- sapply(X1,mean)
    M2 <- sapply(X2,mean)
    # calcolo matrice di covarianza campionaria per i due campioni
    S1  <-  cov(X1)
    S2  <-  cov(X2)
-   # calcolo la matrice di covarianza pool
+   # calcolo la matrice di covarianza pool: uguale per hp nei due campioni
    S <- ((n1 - 1) * S1 + (n2 - 1) * S2) / (n1 + n2 - 2)
    
    ######## checking the assumptions ###########
@@ -62,10 +73,12 @@ two.pop_test <- function(X1, X2, delta0, alpha = 0.05, print.plot = T){
    cat("T2 test p-value = ", p.value,"\n")
    cat("statistica calcolata T2.0 = ",T2, "\n")
    cat("quantile della F * coeff = ", cfr.fisher, "\n")
+   
+   # INTERVALLI CONFIDENZA DIFFERENZA MEDIE DUE POPOLAZIONI
    # intervalli di confidenza pr la differenza tra medie delle due popolazioni sia
    # simultanei che bonferroni
    IC.sim <- cbind(M1 - M2 -sqrt(cfr.fisher*diag(S)*(1/n1+1/n2)),
-                  M1 - M2 +sqrt(cfr.fisher*diag(S)*(1/n1+1/n2)))
+                   M1 - M2 +sqrt(cfr.fisher*diag(S)*(1/n1+1/n2)))
    colnames(IC.sim)<-c("inf","sup")
    IC.Bonf <- cbind(M1 - M2 - cfr.t * sqrt(diag(S)*(1/n1+1/n2)),
                     M1 - M2 + cfr.t * sqrt(diag(S)*(1/n1+1/n2)))
@@ -74,6 +87,28 @@ two.pop_test <- function(X1, X2, delta0, alpha = 0.05, print.plot = T){
    print("############# IC DIFFERENZA MEDIE, BONFERRONI E T2 #################")
    cat("intervalli di confidenza al livello alpha =",alpha, " per differenza medie componenti","\n")
    print(IC)
+   
+   # INTERVALLI DI CONFIDENZA PER COMBINAZIONI LINEARI
+   if(!is.null(A)){
+      IC.sim.2 <- cbind(A%*%(M1 - M2) -sqrt(cfr.fisher*diag(A%*%S%*%t(A))*(1/n1+1/n2)),
+                        A%*%(M1 - M2) +sqrt(cfr.fisher*diag(A%*%S%*%t(A))*(1/n1+1/n2)))
+      colnames(IC.sim.2)<-c("inf","sup")
+      k <- dim(A)[1]
+      cfr.t <- qt(1 - alpha/(2 * k), n1 + n2 - 2)
+      IC.Bonf.2 <- cbind(A%*%(M1 - M2) - cfr.t * sqrt(diag(A%*%S%*%t(A))*(1/n1+1/n2)),
+                         A%*%(M1 - M2) + cfr.t * sqrt(diag(A%*%S%*%t(A))*(1/n1+1/n2)))
+      colnames(IC.Bonf.2)<-c("inf","sup")
+      IC.2 <- list(simult = IC.sim.2,Bonf = IC.Bonf.2)
+      print("############# IC LINEAR COMB DIFFERENZA MEDIE, BONFERRONI E T2 #################")
+      cat("intervalli di confidenza al livello alpha =",alpha, " per differenza medie componenti","\n")
+      cat("correzione di bonferroni k = ",k, "\n")
+      print(IC.2)
+      
+      return(list(componenti = IC, linear_comb = IC.2))
+      
+   }
+   
+   
    
    return(IC)
 }# end function
@@ -84,7 +119,6 @@ two.pop_test <- function(X1, X2, delta0, alpha = 0.05, print.plot = T){
 check_gaussianity <- function(X, alpha,i){
    # i indica il gruppo su cui sto controllando l'hp
    
-   load("/home/andrea/StatApp/StatApp_test/inference/mcshapiro.test.RData")
    # check for gaussianity
    mctest <- mcshapiro.test(X)
    if(mctest$pvalue < alpha)
